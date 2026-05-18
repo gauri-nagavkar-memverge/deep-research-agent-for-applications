@@ -9,6 +9,7 @@ This application demonstrates the Deep Orchestrator (AdaptiveOrchestrator) for f
 - Task queue management with dependencies
 - Policy-driven execution control
 - Full state visibility throughout execution
+- Cross-session memory via MemMachine (MCP)
 """
 
 import argparse, asyncio, sys
@@ -30,6 +31,7 @@ def get_server_list() -> list[str]:
         "fetch",
         "filesystem",
         "financial-datasets",
+        "memmachine",
         "yfmcp",
     ]
 
@@ -144,32 +146,10 @@ def process_cli_arguments(parser_util: ParserUtil):
 
     processed_args = parser_util.process_args()
 
-    # Custom paths for this app, such as the output spreadsheet to write.
-    # For example, the help for this option (and most output options) tells the user
-    # that if the argument doesn't have a path prefix, we will write to the location
-    # specified by `--output-dir`. We call `resolve_path` to handle this. (This is done
-    # for you in `parser_util.process_args()` for common arguments like `--markdown-report`
-    # Obviously an 
-    # output file isn't expected to exist yet, so `resolve_and_require_path` isn't called!
-
     output_dir_path = processed_args['output_dir_path']
     output_spreadsheet_path = resolve_path(processed_args['output_spreadsheet'], output_dir_path)
     
-    # For example, the help for `--markdown-yaml-header`
-    # tells the user that if the argument doesn't have a path prefix, we will read
-    # the file from the `template_path` location. For input files, we will raise an
-    # exception if it doesn't exist. We call `resolve_and_require_path` to perform
-    # this path resolution and ensure the file exists.
-    # Similarly, output files specified, such as `--markdown-report`, will be written
-    # to the `output_dir_path` location, if the path provided doesn't contain a
-    # directory prefix. Here we call `resolve_path` to handle this. Obviously an 
-    # output file isn't expected to exist yet, so `resolve_and_require_path` isn't called!
-
-    # Template files (for the prompts here) work similarly, but because these
-    # are input paths, we call `resolve_and_require_path` to ensure they exist. 
-    # If not, an exception is raised.
     templates_dir_path = processed_args['templates_dir_path']
-    # These must exist:
     financial_research_prompt_path = resolve_and_require_path(
         processed_args['financial_research_prompt_path'], templates_dir_path)
     excel_writer_agent_prompt_path = resolve_and_require_path(
@@ -183,18 +163,7 @@ def process_cli_arguments(parser_util: ParserUtil):
 
 def create_variables(parser_util: ParserUtil) -> dict[str, Variable]:
     """
-    The variables dict contains values used throughout the app, including labels 
-    for display purposes and a format feature for rendering the values as plain text,
-    Markdown-appropriate (e.g., `foo` for code), etc. The returned `Variable` dictionary
-    is used more or less like typical Python function `**kvs`.
-    Because the variables are also used for display purposes, we declare them somewhat in
-    the order of most interest to the user, starting with application-specific definitions.
-
-    Args:
-        parser_util (ParserUtil):  A utility that handles CLI arguments and common processing steps for them.
-
-    Return:
-        dict[str, Variable]:       A dictionary of `Variable`s used throughout the app.
+    The variables dict contains values used throughout the app.
     """
     variables_list = [
         Variable("start_time",           parser_util.processed_args["start_time"]),
@@ -204,10 +173,8 @@ def create_variables(parser_util: ParserUtil) -> dict[str, Variable]:
         Variable("units",                f"{parser_util.processed_args['reporting_currency']} millions"),
     ]
 
-    # Add common values across apps:
     variables_list.extend(parser_util.common_variables())
     
-    # Finish with the remaining custom variables for this app and "verbose" variables:
     variables_list.extend([
         Variable("excel_writer_model",             parser_util.processed_args['excel_writer_model'], kind='code'),
         Variable("output_spreadsheet_path",        parser_util.processed_args["output_spreadsheet_path"], kind='file'),
@@ -220,33 +187,20 @@ def create_variables(parser_util: ParserUtil) -> dict[str, Variable]:
 
 def make_tasks(parser_util: ParserUtil, variables: dict[str, Variable]) -> Sequence[BaseTask]:
     """
-    Create the tasks for this research agent. All applications will start with a 
-    `GenerateTask` to drive the `mcp-agent` "Deep Orchestrator" that invokes the tools
-    and MCP services (discussed below) to do the basic research, aggregate the results 
-    and generate a report at the end.
-    Additional `AgentTask`s and `GenerateTask`s might be used for additional processing.
-    In the finance app, an `AgentTask` is used to generate an Excel spreadsheet with the 
-    results.
-
-    Args:
-        parser_util (ParserUtil):         A utility that handles CLI arguments and common processing steps for them.
-        variables (dict[str, Variable]):  A dictionary of `Variable`s used throughout the app.
-
-    Return:
-        list[BaseTask]:                   A list of the tasks to do.
+    Create the tasks for this research agent.
     """
 
     tasks = [
         GenerateTask(
             name="financial_research",
-            title="📊 Financial Research Result",
+            title="\U0001F4CA Financial Research Result",
             model_name=variables['research_model'].value,
             prompt_template_path=variables['financial_research_prompt_path'].value,
             output_dir_path=variables['output_dir_path'].value,
             properties=variables),
         AgentTask(
             name="excel_writer",
-            title="📈 Excel Creation Result",
+            title="\U0001F4C8 Excel Creation Result",
             model_name=variables['excel_writer_model'].value,
             prompt_template_path=variables['excel_writer_agent_prompt_path'].value,
             output_dir_path=variables['output_dir_path'].value,

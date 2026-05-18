@@ -31,6 +31,31 @@ mcp:
     excel_writer:
       command: "uvx"
       args: ["excel-mcp-server", "stdio"]
+    memmachine:
+      # MemMachine: open-source long-term memory layer for AI agents.
+      # Persists episodic + semantic memory across research sessions so
+      # the Deep Orchestrator can recall prior findings, user preferences,
+      # and intermediate analysis.
+      #
+      # Prereq: a running MemMachine Docker container named `memmachine-app`
+      # (see https://github.com/MemMachine/MemMachine ->
+      # `./memmachine-compose.sh`).
+      #
+      # If you have MemMachine installed locally instead of via Docker,
+      # replace this block with:
+      #   command: "memmachine-mcp-stdio"
+      #   env:
+      #     MEMORY_CONFIG: "/absolute/path/to/cfg.yml"
+      #     MM_USER_ID: "dra-finance"
+      #     PYTHONUNBUFFERED: "1"
+      command: "docker"
+      args: ["exec", "-i", "memmachine-app", "/app/.venv/bin/memmachine-mcp-stdio"]
+      env:
+        MEMORY_CONFIG: "/app/configuration.yml"
+        MM_USER_ID: "dra-finance"
+        MM_PROJ_ID: "dra-finance"
+        MM_ORG_ID: "ai-alliance"
+        PYTHONUNBUFFERED: "1"
       
 # Since Ollama and OpenAI use the same internal code path, i.e.,
 # mcp-agent's `OpenAIAugmentedLLM`, the definition for "openai:"

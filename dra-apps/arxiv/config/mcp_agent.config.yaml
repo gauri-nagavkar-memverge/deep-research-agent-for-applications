@@ -28,6 +28,18 @@ mcp:
     filesystem:
       command: "npx"
       args: ["-y", "@modelcontextprotocol/server-filesystem", ".."]
+    memmachine:
+      # MemMachine: open-source long-term memory layer for AI agents.
+      # See examples/with-memmachine/README.md and
+      # https://github.com/MemMachine/MemMachine
+      command: "docker"
+      args: ["exec", "-i", "memmachine-app", "/app/.venv/bin/memmachine-mcp-stdio"]
+      env:
+        MEMORY_CONFIG: "/app/configuration.yml"
+        MM_USER_ID: "dra-arxiv"
+        MM_PROJ_ID: "dra-arxiv"
+        MM_ORG_ID: "ai-alliance"
+        PYTHONUNBUFFERED: "1"
       
 # Since Ollama and OpenAI use the same internal code path, i.e.,
 # mcp-agent's `OpenAIAugmentedLLM`, the definition for "openai:"
